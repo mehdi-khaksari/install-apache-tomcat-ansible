@@ -1,0 +1,76 @@
+- name: apt upadte
+  apt:
+    update_cache: yes
+
+- name: Create tomcat group
+  group:
+    name: tomcat
+    state: present
+
+- name: Create tomcat user
+  user:
+    name: tomcat
+    group: tomcat
+    home: /opt/tomcat
+    create_home: yes
+    shell: /bin/false
+    state: present
+
+- name: Install default-jdk
+  apt:
+    name: default-jdk
+    state: present
+
+- name: Get tomcat tar file
+  get_url:
+    url: https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.41/bin/apache-tomcat-10.1.41.tar.gz
+    dest: /opt/tomcat
+
+- name: Unarchive tomcat tar file
+  unarchive:
+    src: /opt/tomcat/apache-tomcat-10.1.41.tar.gz
+    dest: /opt/tomcat
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+
+- name: set owner for /opt/tomcat
+  file:
+    path: /opt/tomcat
+    owner: tomcat
+    group: tomcat
+    recurse: yes
+
+- name: set permission for /opt/tomcat/bin
+  file:
+    path: /opt/tomcat/bin
+    mode: u+x
+    recurse: yes
+
+- name: change tomcat config (1)
+  template:
+    src: tomcat-users.xml.j2
+    dest: /opt/tomcat/conf/tomcat-users.xml
+
+- name: change tomcat config (2)
+  template:
+    src: context.xml-manager.j2
+    dest: /opt/tomcat/webapps/manager/META-INF/context.xml
+
+- name: change tomcat config (3)
+  template:
+    src: context.xml-host-manager.j2
+    dest: /opt/tomcat/webapps/host-manager/META-INF/context.xml
+
+- name: Create tomcat service
+  template: 
+    src: tomcat.service.j2
+    dest: /etc/systemd/system/tomcat.service
+
+- name: Reload deamon
+  systemd_service:
+    daemon_reload: true
+
+- name: start tomcat
+  systemd_service:
+    state: started
+    name: tomcat
